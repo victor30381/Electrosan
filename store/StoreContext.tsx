@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useAuth } from './AuthContext';
 import { getArgentinaToday, toLocalISOString } from '../utils/dateUtils';
 import { Client, Sale, Lead, Installment, Product, PaymentFrequency, PaymentMethod } from '../types';
 import { db } from '../firebase';
@@ -60,6 +61,7 @@ const addMonths = (date: Date, months: number) => {
 };
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -67,19 +69,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Firestore Listeners
   useEffect(() => {
-    const qClients = query(collection(db, 'clients'), orderBy('createdAt', 'desc'));
+    if (!user) {
+      setClients([]);
+      setSales([]);
+      setLeads([]);
+      return;
+    }
+
+    const qClients = query(collection(db, 'users', user.uid, 'clients'), orderBy('createdAt', 'desc'));
     const unsubscribeClients = onSnapshot(qClients, (snapshot) => {
       const clientsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
       setClients(clientsData);
     });
 
-    const qSales = query(collection(db, 'sales'), orderBy('createdAt', 'desc'));
+    const qSales = query(collection(db, 'users', user.uid, 'sales'), orderBy('createdAt', 'desc'));
     const unsubscribeSales = onSnapshot(qSales, (snapshot) => {
       const salesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Sale));
       setSales(salesData);
     });
 
-    const qLeads = query(collection(db, 'leads'), orderBy('createdAt', 'desc'));
+    const qLeads = query(collection(db, 'users', user.uid, 'leads'), orderBy('createdAt', 'desc'));
     const unsubscribeLeads = onSnapshot(qLeads, (snapshot) => {
       const leadsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lead));
       setLeads(leadsData);
@@ -90,29 +99,32 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       unsubscribeSales();
       unsubscribeLeads();
     };
-  }, []);
+  }, [user]);
 
   const addClient = async (data: Omit<Client, 'id' | 'createdAt'>): Promise<Client> => {
+    if (!user) throw new Error("No user authenticated");
     const payload = {
       ...data,
       createdAt: new Date().toISOString()
     };
-    const docRef = await addDoc(collection(db, 'clients'), payload);
+    const docRef = await addDoc(collection(db, 'users', user.uid, 'clients'), payload);
     return { id: docRef.id, ...payload } as Client;
   };
 
   const updateClient = async (id: string, data: Partial<Client>) => {
-    const docRef = doc(db, 'clients', id);
+    if (!user) return;
+    const docRef = doc(db, 'users', user.uid, 'clients', id);
     await updateDoc(docRef, data);
   };
 
   const deleteClient = async (id: string) => {
+    if (!user) return;
     // Cascading delete simplified for Firestore: In a production app, use a Cloud Function or batch
-    await deleteDoc(doc(db, 'clients', id));
+    await deleteDoc(doc(db, 'users', user.uid, 'clients', id));
     // Also cleanup associated sales (this should ideally be transactional or handled by a backend hook)
     const relatedSales = sales.filter(s => s.clientId === id);
     for (const sale of relatedSales) {
-      await deleteDoc(doc(db, 'sales', sale.id));
+      await deleteDoc(doc(db, 'users', user.uid, 'sales', sale.id));
     }
   };
 
@@ -211,12 +223,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       installments: installments
     };
 
-    const docRef = await addDoc(collection(db, 'sales'), payload);
+    if (user) {
+      await addDoc(collection(db, 'users', user.uid, 'sales'), payload);
+    }
     // Update local sale mapping if needed, though onSnapshot handles it
   };
 
   const addLead = async (description: string, clientId?: string) => {
-    await addDoc(collection(db, 'leads'), {
+    if (!user) return;
+    await addDoc(collection(db, 'users', user.uid, 'leads'), {
       clientId: clientId || null,
       description,
       status: 'new',
@@ -225,15 +240,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const deleteLead = async (id: string) => {
-    await deleteDoc(doc(db, 'leads', id));
+    if (!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'leads', id));
   };
 
   const toggleSaleStatus = async (saleId: string) => {
+    if (!user) return;
     const sale = sales.find(s => s.id === saleId);
     if (!sale) return;
 
     const newStatus = sale.status === 'active' ? 'defaulted' : 'active';
-    await updateDoc(doc(db, 'sales', saleId), { status: newStatus });
+    await updateDoc(doc(db, 'users', user.uid, 'sales', saleId), { status: newStatus });
   };
 
   const markInstallmentPaid = async (saleId: string, installmentId: string) => {
@@ -256,7 +273,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const roundedRemaining = Math.max(0, Math.round(remaining * 100) / 100);
     const isComplete = roundedRemaining <= 0;
 
-    await updateDoc(doc(db, 'sales', saleId), {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid, 'sales', saleId), {
       installments: updatedInstallments,
       remainingAmount: roundedRemaining,
       status: isComplete ? 'completed' : (sale.status === 'completed' ? 'active' : sale.status)
@@ -287,19 +305,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return inst;
     });
 
-    await updateDoc(doc(db, 'sales', saleId), {
+    if (!user) return;
+    await updateDoc(doc(db, 'users', user.uid, 'sales', saleId), {
       missedPaymentsCount: updatedMissedCount,
       installments: updatedInstallments
     });
   };
 
   const deleteSale = async (saleId: string) => {
-    await deleteDoc(doc(db, 'sales', saleId));
+    if (!user) return;
+    await deleteDoc(doc(db, 'users', user.uid, 'sales', saleId));
   };
 
   const updateSale = async (updatedSale: Sale) => {
+    if (!user) return;
     const { id, ...data } = updatedSale;
-    await updateDoc(doc(db, 'sales', id), data);
+    await updateDoc(doc(db, 'users', user.uid, 'sales', id), data);
   };
 
   const isDefaulter = (clientId: string) => {

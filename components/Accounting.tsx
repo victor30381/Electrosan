@@ -234,7 +234,7 @@ export const Accounting: React.FC = () => {
 
         <div className="glass-glow border border-white/5 rounded-[32px] p-6 md:p-10 shadow-2xl h-[400px] md:h-[500px] flex flex-col">
           <h3 className="text-xs font-black text-white/30 uppercase tracking-[0.3em] mb-8">Evolución de Recaudación</h3>
-          <div className="flex-1 w-full h-[250px] md:h-full">
+          <div className="w-full h-[250px] md:h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={financialData.slice(-10)}>
                 <CartesianGrid strokeDasharray="10 10" stroke="#1a1a1a" vertical={false} />
