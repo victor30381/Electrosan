@@ -69,6 +69,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Firestore Listeners
   useEffect(() => {
+    console.log("StoreContext: Current User UID:", user?.uid);
     if (!user) {
       setClients([]);
       setSales([]);
