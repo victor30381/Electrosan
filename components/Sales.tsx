@@ -496,7 +496,10 @@ export const Sales: React.FC = () => {
                 {/* Inicio */}
                 <div className="space-y-2">
                   <label className="text-[10px] text-white/40 uppercase font-black tracking-widest ml-1 flex items-center gap-2">
-                    <Calendar size={12} className="text-neon-400" /> Fecha de Inicio
+                    <Calendar size={12} className="text-neon-400" />
+                    {parseInt(saleForm.firstInstallmentNumber) > 1
+                      ? `Fecha Vencimiento Cuota ${saleForm.firstInstallmentNumber}`
+                      : 'Fecha de Inicio'}
                   </label>
                   <input
                     type="date"
