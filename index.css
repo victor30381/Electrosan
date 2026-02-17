@@ -1,0 +1,308 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --neon-primary: #39FF14;
+  --neon-glow: rgba(57, 255, 20, 0.4);
+  --neon-glow-hover: rgba(57, 255, 20, 0.6);
+  --bg-dark: #050505;
+  --bg-card: #0A0A0A;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-dark);
+  background-color: var(--bg-dark);
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+select option {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* LIGHT MODE STYLES */
+.light-mode {
+  --bg-dark: #f8fafc;
+  --bg-card: #ffffff;
+  --neon-glow: rgba(57, 255, 20, 0.4);
+  /* Keep neon glow slightly meaningful */
+  --text-primary: #000000;
+  --text-secondary: #475569;
+  --border-color: #e2e8f0;
+}
+
+.light-mode body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+}
+
+/* Light Mode Overrides for Glass Glow */
+.light-mode .glass-glow {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.light-mode .glass-glow:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: var(--neon-primary);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 0 15px rgba(57, 255, 20, 0.15);
+}
+
+/* Light Mode Input/Select Overrides */
+.light-mode input,
+.light-mode select,
+.light-mode textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #e2e8f0 !important;
+}
+
+.light-mode option {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.light-mode input:focus,
+.light-mode select:focus,
+.light-mode textarea:focus {
+  border-color: var(--neon-primary) !important;
+  box-shadow: 0 0 0 3px rgba(57, 255, 20, 0.1) !important;
+}
+
+.light-mode input::placeholder,
+.light-mode textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Light Mode Text Overrides */
+.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+.light-mode .text-white\/60,
+.light-mode .text-white\/50,
+.light-mode .text-white\/40,
+.light-mode .text-white\/30,
+.light-mode .text-white\/70,
+.light-mode .text-white\/80 {
+  color: #64748b !important;
+}
+
+.light-mode .border-white\/5,
+.light-mode .border-white\/10 {
+  border-color: #e2e8f0 !important;
+}
+
+.light-mode .bg-white\/5 {
+  background-color: #f1f5f9 !important;
+}
+
+.light-mode .bg-white\/\[0\.02\] {
+  background-color: #ffffff !important;
+}
+
+/* Invert Calendar Icon for Light Mode */
+.light-mode input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+  opacity: 0.6;
+}
+
+.light-mode .text-neon-400 {
+  color: #16a34a !important;
+  /* Slightly darker green for better contrast on white */
+  font-weight: 800;
+}
+
+.light-mode .bg-neon-400 {
+  background-color: #39FF14 !important;
+  /* Keep original vibrant green for backgrounds */
+  color: black !important;
+}
+
+/* Table Stripes Light Mode */
+.light-mode .divide-white\/5>*+* {
+  border-color: #e2e8f0 !important;
+}
+
+/* Scrollbar Light Mode */
+.light-mode ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.light-mode ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+.light-mode ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  :root {
+    font-size: 14px;
+  }
+}
+
+/* Neon Glow Utilities */
+.neon-border {
+  border: 1px solid var(--neon-primary);
+  box-shadow: 0 0 10px var(--neon-glow), inset 0 0 5px var(--neon-glow);
+}
+
+.neon-border-subtle {
+  border: 1px solid rgba(57, 255, 20, 0.2);
+}
+
+.neon-border-subtle:hover {
+  border-color: var(--neon-primary);
+  box-shadow: 0 0 15px var(--neon-glow);
+}
+
+.neon-text {
+  text-shadow: 0 0 10px var(--neon-glow);
+}
+
+.neon-shadow {
+  box-shadow: 0 0 20px var(--neon-glow);
+}
+
+.neon-shadow-hover:hover {
+  box-shadow: 0 0 25px var(--neon-glow-hover);
+}
+
+/* Glassmorphism */
+.glass-glow {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-glow:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(57, 255, 20, 0.3);
+}
+
+/* Touch friendly targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.mobile-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .mobile-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .mobile-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-duration: 300ms;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-primary);
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 0 5px var(--neon-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--neon-glow);
+  }
+
+  100% {
+    box-shadow: 0 0 5px var(--neon-glow);
+  }
+}
+
+.animate-neon-pulse {
+  animation: pulse-glow 3s infinite;
+}
+
+/* Date Input Calendar Icon Visibility */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+/* Indirect Neon Glow */
+.neon-indirect-glow {
+  position: relative;
+}
+
+.neon-indirect-glow::after {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle at center, var(--neon-glow) 0%, transparent 70%);
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease;
+  border-radius: inherit;
+}
+
+.neon-indirect-glow.active::after {
+  opacity: 1;
+  animation: pulse-indirect-glow 2s infinite ease-in-out;
+}
+
+@keyframes pulse-indirect-glow {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.hover-neon-indirect:hover {
+  box-shadow: 0 0 30px rgba(57, 255, 20, 0.15);
+  border-color: rgba(57, 255, 20, 0.3) !important;
+}
