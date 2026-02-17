@@ -586,31 +586,66 @@ export const Dashboard: React.FC = () => {
                       </button>
 
                       {/* Middle: Click to View Client Details */}
-                      <div
-                        onClick={() => setViewingClient(item.clientId)}
-                        className="flex-1 p-6 cursor-pointer hover:bg-white/[0.02] transition-all flex flex-col md:flex-row items-center justify-between gap-4"
-                      >
-                        <div className="flex flex-col w-full md:w-auto">
-                          <p className="text-white font-black uppercase tracking-tight text-lg group-hover:text-neon-400 group-hover:neon-text transition-all flex items-center gap-2">
-                            {item.clientName} <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
-                          </p>
-                          <div className="flex flex-wrap items-center gap-3 mt-1">
-                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${item.isOverdue ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 'bg-neon-400/20 text-neon-400 border border-neon-400/20'}`}>
-                              {item.isOverdue ? `Atraso: ${item.daysOverdue} días` : 'Vence Hoy'}
-                            </span>
-                            {item.missedPaymentsCount > 0 && (
-                              <span className="bg-amber-400/20 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest">
-                                Moroso {item.missedPaymentsCount} cuota{item.missedPaymentsCount > 1 ? 's' : ''}
-                              </span>
-                            )}
-                            <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">
-                              {item.products && item.products.length > 1
-                                ? `${item.products.length} Créditos: ${item.products.slice(0, 2).join(', ')}${item.products.length > 2 ? '...' : ''}`
-                                : `Cuota ${item.number} • ${item.productName}`}
-                            </span>
+                      <div className="flex-1 p-6 flex flex-col justify-center">
+                        <div
+                          onClick={() => setViewingClient(item.clientId)}
+                          className="cursor-pointer hover:bg-white/[0.02] -m-2 p-2 rounded-xl transition-all"
+                        >
+                          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div className="flex flex-col w-full md:w-auto">
+                              <p className="text-white font-black uppercase tracking-tight text-lg group-hover:text-neon-400 group-hover:neon-text transition-all flex items-center gap-2">
+                                {item.clientName} <ChevronRight size={16} className="opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0" />
+                              </p>
+                              <div className="flex flex-wrap items-center gap-3 mt-1">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${item.isOverdue ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 'bg-neon-400/20 text-neon-400 border border-neon-400/20'}`}>
+                                  {item.isOverdue ? `Atraso: ${item.daysOverdue} días` : 'Vence Hoy'}
+                                </span>
+                                {item.missedPaymentsCount > 0 && (
+                                  <span className="bg-amber-400/20 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest">
+                                    Moroso {item.missedPaymentsCount} cuota{item.missedPaymentsCount > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="text-2xl font-black text-white group-hover:neon-text transition-all">${item.amount.toLocaleString()}</span>
                           </div>
+
+                          {/* If Multiple Items: Show Breakdown */}
+                          {item.installments && item.installments.length > 1 ? (
+                            <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                              {item.installments.map((subInst: any, subIdx: number) => {
+                                const prodName = item.products && item.products[subIdx] ? item.products[subIdx] : 'Crédito';
+                                return (
+                                  <div key={subInst.id} className="flex items-center justify-between bg-white/[0.02] p-2 rounded-lg border border-white/5">
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] text-white font-bold uppercase tracking-tight">{prodName}</span>
+                                      <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Cuota {subInst.number}</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xs font-black text-neon-400">${subInst.amount.toLocaleString()}</span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation(); // Don't open client modal
+                                          markInstallmentPaid(subInst.saleId, subInst.id);
+                                        }}
+                                        className="p-1.5 rounded-lg bg-white/5 hover:bg-neon-400 text-white/50 hover:text-black transition-all"
+                                        title="Pagar solo esta cuota"
+                                      >
+                                        <CheckCircle size={14} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="mt-1">
+                              <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">
+                                Cuota {item.number} • {item.productName}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-2xl font-black text-white group-hover:neon-text transition-all">${item.amount.toLocaleString()}</span>
                       </div>
 
                       {/* Right: Actions */}
