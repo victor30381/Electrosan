@@ -73,7 +73,7 @@ export const Dashboard: React.FC = () => {
     const selectedDate = safeDateFormat(selectedDashboardDate);
     const isToday = selectedDashboardDate === getArgentinaToday();
 
-    const alerts: { clientName: string, amount: number, date: string, daysOverdue: number, frequency: string }[] = [];
+    const alerts: { clientId: string, clientName: string, amount: number, date: string, daysOverdue: number, frequency: string }[] = [];
 
     sales.forEach(sale => {
       const clientName = clients.find(c => c.id === sale.clientId)?.name || 'Desconocido';
@@ -131,43 +131,66 @@ export const Dashboard: React.FC = () => {
           }
 
           const dueDate = safeDateFormat(inst.dueDate);
-
           const diffTime = today.getTime() - dueDate.getTime();
           const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
           const isOverdue = dueDate < today;
 
-          // Logic for "Pending Today or Overdue" list (Alerts)
-          // Also hide alerts if the client is marked as defaulted (we know they are not paying)
-
           const instDueDateStr = inst.dueDate.split('T')[0];
           const matchesDate = instDueDateStr === selectedDashboardDate;
 
+          // LOGIC: Group by Client for "Today's Alerts" and "Pending List"
           if (matchesDate && sale.status !== 'defaulted') {
-            const alertItem = {
-              clientName,
-              amount: inst.amount,
-              date: inst.dueDate,
-              daysOverdue: diffDays,
-              frequency: sale.frequency
-            };
-
-            alerts.push(alertItem);
-
-            // For the modal, we still only want today + overdue
-            if (dueDate <= today) {
-              pendingList.push({
-                id: inst.id,
-                saleId: sale.id,
+            const existingAlert = alerts.find(a => a.clientId === sale.clientId);
+            if (existingAlert) {
+              existingAlert.amount += inst.amount;
+              // We could also merge product names or count items, but amount is key
+            } else {
+              alerts.push({
                 clientId: sale.clientId,
                 clientName,
-                productName: sale.product.name,
-                number: inst.number,
                 amount: inst.amount,
-                dueDate: inst.dueDate,
-                daysOverdue: Math.max(0, diffDays),
-                isOverdue,
-                missedPaymentsCount: sale.missedPaymentsCount || 0
+                date: inst.dueDate,
+                daysOverdue: diffDays,
+                frequency: sale.frequency
               });
+            }
+
+            // For the MODAL list (Pending List), we also want to group by client
+            if (dueDate <= today) {
+              const existingPending = pendingList.find(p => p.clientId === sale.clientId);
+
+              if (existingPending) {
+                existingPending.amount += inst.amount;
+                existingPending.products.push(sale.product.name);
+                existingPending.installments.push({
+                  id: inst.id,
+                  saleId: sale.id,
+                  amount: inst.amount,
+                  number: inst.number
+                });
+              } else {
+                pendingList.push({
+                  // We simulate a single item ID, but we need to handle multi-payment
+                  id: inst.id,
+                  saleId: sale.id, // Primary sale ID, but could be mixed
+                  clientId: sale.clientId,
+                  clientName,
+                  productName: sale.product.name, // Initial product name
+                  products: [sale.product.name],
+                  number: inst.number,
+                  amount: inst.amount,
+                  dueDate: inst.dueDate,
+                  daysOverdue: Math.max(0, diffDays),
+                  isOverdue,
+                  missedPaymentsCount: sale.missedPaymentsCount || 0,
+                  installments: [{ // New structure to hold all child installments
+                    id: inst.id,
+                    saleId: sale.id,
+                    amount: inst.amount,
+                    number: inst.number
+                  }]
+                });
+              }
             }
           }
         }
@@ -541,11 +564,21 @@ export const Dashboard: React.FC = () => {
                       key={item.id}
                       className="glass-glow border border-white/5 rounded-2xl flex items-stretch justify-between group overflow-hidden hover:border-neon-400/30 transition-all duration-300 shadow-xl"
                     >
-                      {/* Left: Click to Mark as Paid */}
+                      {/* Left: Click to Mark as Paid (Grouped) */}
                       <button
-                        onClick={() => markInstallmentPaid(item.saleId, item.id)}
+                        onClick={async () => {
+                          if (item.installments && item.installments.length > 0) {
+                            // Pay all grouped installments
+                            for (const inst of item.installments) {
+                              await markInstallmentPaid(inst.saleId, inst.id);
+                            }
+                          } else {
+                            // Fallback for single (legacy)
+                            markInstallmentPaid(item.saleId, item.id);
+                          }
+                        }}
                         className="w-20 flex items-center justify-center bg-white/[0.03] border-r border-white/5 hover:bg-neon-400 transition-all group/btn active:scale-95"
-                        title="Marcar cobrado"
+                        title="Marcar TODO cobrado"
                       >
                         <div className="w-8 h-8 rounded-xl border border-white/10 group-hover:border-black/20 flex items-center justify-center transition-all shadow-inner">
                           <DollarSign size={18} className="text-neon-400 group-hover:text-black transition-colors" />
@@ -570,7 +603,11 @@ export const Dashboard: React.FC = () => {
                                 Moroso {item.missedPaymentsCount} cuota{item.missedPaymentsCount > 1 ? 's' : ''}
                               </span>
                             )}
-                            <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">Cuota {item.number} • {item.productName}</span>
+                            <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">
+                              {item.products && item.products.length > 1
+                                ? `${item.products.length} Créditos: ${item.products.slice(0, 2).join(', ')}${item.products.length > 2 ? '...' : ''}`
+                                : `Cuota ${item.number} • ${item.productName}`}
+                            </span>
                           </div>
                         </div>
                         <span className="text-2xl font-black text-white group-hover:neon-text transition-all">${item.amount.toLocaleString()}</span>
