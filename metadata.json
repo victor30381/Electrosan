@@ -1,0 +1,5 @@
+{
+  "name": "ElectroSan Admin",
+  "description": "Sistema de gestión administrativa dark-mode para ElectroSan, enfocado en control de créditos, clientes y flujo de caja.",
+  "requestFramePermissions": []
+}

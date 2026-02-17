@@ -33,7 +33,7 @@ select option {
   --border-color: #e2e8f0;
 }
 
-.light-mode body {
+body.light-mode {
   background-color: var(--bg-dark);
   color: var(--text-primary);
 }

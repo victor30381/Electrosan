@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, DollarSign, TrendingUp, X, Menu, AlertCircle, ShoppingBag, PieChart, Check } from 'lucide-react';
+import { LayoutDashboard, Users, DollarSign, TrendingUp, X, Menu, AlertCircle, ShoppingBag, PieChart, Check, Sun, Moon } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { Clients } from './components/Clients';
 import { Sales } from './components/Sales';
@@ -14,9 +14,25 @@ const AppContent: React.FC = () => {
   const { user, loading, logout } = useAuth();
   const [currentView, setCurrentView] = useState<ViewState>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLightMode, setIsLightMode] = useState(false);
+  const [isLightMode, setIsLightMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'light';
+  });
 
-  const toggleTheme = () => setIsLightMode(!isLightMode);
+  // Toggle body class for global styles
+  React.useEffect(() => {
+    if (isLightMode) {
+      document.body.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.body.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    }
+  }, [isLightMode]);
+
+  const toggleTheme = () => {
+    setIsLightMode(prev => !prev);
+  };
 
   // Theme-aware classes
   const theme = {
@@ -32,8 +48,8 @@ const AppContent: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="text-neon-400 animate-spin" size={48} />
+      <div className={`min-h-screen flex items-center justify-center ${isLightMode ? 'bg-white' : 'bg-black'}`}>
+        <Loader2 className={`${isLightMode ? 'text-neon-600' : 'text-neon-400'} animate-spin`} size={48} />
       </div>
     );
   }
@@ -50,7 +66,7 @@ const AppContent: React.FC = () => {
       }}
       className={`relative w-full flex items-center gap-6 px-10 py-6 md:px-8 md:py-5 transition-all duration-500 group overflow-hidden ${currentView === view
         ? 'text-neon-400'
-        : 'text-gray-500 hover:text-white'
+        : isLightMode ? 'text-gray-500 hover:text-black' : 'text-gray-500 hover:text-white'
         }`}
     >
       {/* Background Active Glow */}
@@ -93,18 +109,18 @@ const AppContent: React.FC = () => {
           {mobileMenuOpen && (
             <div className="md:hidden fixed inset-0 z-[100] animate-in fade-in duration-500">
               <div
-                className="absolute inset-0 bg-black/60 backdrop-blur-2xl"
+                className={`absolute inset-0 backdrop-blur-2xl ${isLightMode ? 'bg-black/20' : 'bg-black/60'}`}
                 onClick={() => setMobileMenuOpen(false)}
               />
-              <div className="absolute inset-y-0 left-0 w-[85%] max-w-sm bg-dark-950/95 border-r border-white/5 shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-500">
+              <div className={`absolute inset-y-0 left-0 w-[85%] max-w-sm ${isLightMode ? 'bg-white/95 border-gray-200' : 'bg-dark-950/95 border-white/5'} border-r shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-500`}>
                 <div className="flex items-center justify-between mb-12">
                   <div className="flex items-center gap-3">
                     <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Logo" className="w-10 h-10 object-contain drop-shadow-neon-sm" />
-                    <span className="font-black text-white tracking-tighter text-xl">ELECTRO<span className="text-neon-400">SAN</span></span>
+                    <span className={`font-black tracking-tighter text-xl ${isLightMode ? 'text-black' : 'text-white'}`}>ELECTRO<span className="text-neon-400">SAN</span></span>
                   </div>
                   <button
                     onClick={() => setMobileMenuOpen(false)}
-                    className="p-3 bg-white/5 rounded-2xl text-neon-400"
+                    className={`p-3 rounded-2xl text-neon-400 ${isLightMode ? 'bg-gray-100 hover:bg-gray-200' : 'bg-white/5'}`}
                   >
                     <X size={24} />
                   </button>
@@ -115,6 +131,14 @@ const AppContent: React.FC = () => {
                   <NavItem view="clients" icon={Users} label="Clientes" />
                   <NavItem view="sales" icon={DollarSign} label="Ventas" />
                   <NavItem view="accounting" icon={TrendingUp} label="Contabilidad" />
+
+                  <button
+                    onClick={toggleTheme}
+                    className={`w-full flex items-center gap-6 px-10 py-6 transition-all font-black uppercase tracking-[0.2em] text-[10px] ${isLightMode ? 'text-black hover:text-gray-700' : 'text-gray-500 hover:text-white'}`}
+                  >
+                    {isLightMode ? <Moon size={20} /> : <Sun size={20} />}
+                    {isLightMode ? 'Modo Oscuro' : 'Modo Claro'}
+                  </button>
 
                   <button
                     onClick={() => logout()}
@@ -147,7 +171,7 @@ const AppContent: React.FC = () => {
               </div>
 
               <div className="relative inline-block group">
-                <h1 className="text-3xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(57,255,20,0.2)] group-hover:drop-shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-all">
+                <h1 className={`text-3xl font-black tracking-tighter drop-shadow-[0_0_15px_rgba(57,255,20,0.2)] group-hover:drop-shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-all ${isLightMode ? 'text-black' : 'text-white'}`}>
                   ELECTRO<span className="text-neon-400">SAN</span>
                 </h1>
                 <div className="absolute -bottom-2 left-0 w-full h-0.5 bg-gradient-to-r from-neon-400/50 to-transparent blur-[1px] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 origin-left" />
@@ -187,6 +211,7 @@ const AppContent: React.FC = () => {
                 onClick={toggleTheme}
                 className={`w-full flex items-center justify-center gap-2 p-3 rounded-2xl border font-black uppercase tracking-widest text-[10px] transition-all ${isLightMode ? 'bg-gray-200 text-black border-gray-300' : 'bg-white/5 text-white border-white/10'}`}
               >
+                {isLightMode ? <Moon size={16} /> : <Sun size={16} />}
                 {isLightMode ? 'Modo Oscuro' : 'Modo Claro'}
               </button>
             </div>
@@ -195,10 +220,10 @@ const AppContent: React.FC = () => {
           {/* Main Content */}
           <main className="flex-1 h-screen overflow-y-auto relative">
             {/* Mobile Header */}
-            <div className="md:hidden flex items-center justify-between px-6 py-4 bg-dark-950/80 border-b border-white/5 sticky top-0 z-30 backdrop-blur-xl">
+            <div className={`md:hidden flex items-center justify-between px-6 py-4 ${isLightMode ? 'bg-white/80 border-gray-200' : 'bg-dark-950/80 border-white/5'} border-b sticky top-0 z-30 backdrop-blur-xl transition-colors duration-500`}>
               <div className="flex items-center gap-4">
                 <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ElectroSan Logo" className="w-12 h-12 object-contain drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]" />
-                <span className="font-black text-white tracking-tighter text-xl">ELECTRO<span className="text-neon-400">SAN</span></span>
+                <span className={`font-black tracking-tighter text-xl ${isLightMode ? 'text-black' : 'text-white'}`}>ELECTRO<span className="text-neon-400">SAN</span></span>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -210,7 +235,7 @@ const AppContent: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className={`p-2.5 rounded-xl transition-all duration-300 ${mobileMenuOpen ? 'bg-neon-400 text-black shadow-neon-sm' : 'bg-white/5 text-neon-400'}`}
+                  className={`p-2.5 rounded-xl transition-all duration-300 ${mobileMenuOpen ? 'bg-neon-400 text-black shadow-neon-sm' : isLightMode ? 'bg-gray-100 text-black' : 'bg-white/5 text-neon-400'}`}
                 >
                   {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                 </button>
