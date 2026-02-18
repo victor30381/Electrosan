@@ -19,34 +19,39 @@ const StatCard: React.FC<{
   const glowColor = type === 'success' ? 'rgba(57, 255, 20, 0.2)' : type === 'warning' ? 'rgba(239, 68, 68, 0.2)' : type === 'info' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255, 255, 255, 0.05)';
   const borderColor = type === 'success' ? 'border-neon-400/50' : type === 'warning' ? 'border-red-500/50' : type === 'info' ? 'border-blue-500/50' : 'border-white/5';
   const iconColor = type === 'success' ? 'text-neon-400' : type === 'warning' ? 'text-red-500' : type === 'info' ? 'text-blue-500' : 'text-white/60';
-  const hoverClass = onClick ? 'cursor-pointer hover:bg-white/[0.02] hover:scale-[1.02] active:scale-[0.98]' : '';
+  const hoverClass = onClick ? 'cursor-pointer hover:bg-white/[0.02] hover:scale-[1.01] active:scale-[0.99]' : '';
 
   return (
     <div
       onClick={onClick}
-      className={`glass-glow border ${borderColor} rounded-2xl p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden group transition-all duration-300 ${hoverClass}`}
+      className={`glass-glow border ${borderColor} rounded-[32px] p-8 relative overflow-hidden group transition-all duration-300 ${hoverClass}`}
       style={{ boxShadow: `0 10px 30px -10px rgba(0,0,0,0.5), 0 0 20px -5px ${glowColor}` }}
     >
-      <div className={`absolute -top-6 -right-6 p-8 opacity-5 group-hover:opacity-10 transition-opacity duration-500 ${iconColor} transform group-hover:scale-150 rotate-12`}>
-        {icon}
+      {/* Background Icon */}
+      <div className={`absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity duration-500 ${iconColor} transform scale-150 rotate-12 bg-transparent pointer-events-none`}>
+        {React.cloneElement(icon as React.ReactElement, { size: 120 })}
       </div>
 
-      <div className="relative z-10 flex items-start justify-between">
-        <div className={`p-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 ${iconColor} shadow-inner`}>
-          {React.cloneElement(icon as React.ReactElement, { size: 24 })}
+      <div className="relative z-10 flex items-center justify-between">
+        <div className="flex flex-col gap-3 min-w-0 pr-4">
+          <p className="text-white/60 text-xs font-bold uppercase tracking-[0.25em]">{title}</p>
+          <div className="flex items-baseline gap-2">
+            <h3 className="text-3xl md:text-4xl font-black text-white tracking-tighter leading-none group-hover:neon-text transition-all duration-300 whitespace-nowrap">
+              {value}
+            </h3>
+            {onClick && (
+              <ChevronRight size={20} className="text-white/20 group-hover:text-neon-400 transition-all opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0" />
+            )}
+          </div>
         </div>
-        {onClick && (
-          <ChevronRight size={18} className="text-white/40 group-hover:text-white transition-colors" />
-        )}
-      </div>
 
-      <div className="mt-6 relative z-10">
-        <p className="text-white/60 text-xs font-bold uppercase tracking-[0.2em] mb-1">{title}</p>
-        <h3 className="text-3xl font-black text-white tracking-tight group-hover:neon-text transition-all duration-300">{value}</h3>
+        <div className={`w-16 h-16 rounded-2xl bg-white/5 backdrop-blur-md border border-white/10 ${iconColor} flex items-center justify-center shadow-inner flex-shrink-0 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
+          {React.cloneElement(icon as React.ReactElement, { size: 32 })}
+        </div>
       </div>
 
       {/* Indirect Glow Element */}
-      <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 w-1/2 h-1 blur-[10px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${type === 'success' ? 'bg-neon-400' : type === 'warning' ? 'bg-red-500' : 'bg-blue-500'}`} />
+      <div className={`absolute bottom-0 left-0 h-1 w-full blur-[4px] opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${type === 'success' ? 'bg-gradient-to-r from-transparent via-neon-400 to-transparent' : type === 'warning' ? 'bg-gradient-to-r from-transparent via-red-500 to-transparent' : 'bg-gradient-to-r from-transparent via-blue-500 to-transparent'}`} />
     </div>
   );
 };
@@ -111,8 +116,9 @@ export const Dashboard: React.FC = () => {
         if (inst.status === 'paid') {
           totalCollected += inst.amount;
 
-          // Check if paid today
-          if (inst.paidAt && inst.paidAt.split('T')[0] === todayStr) {
+          // Check if paid today (timezone adjusted: compare YYYY-MM-DD in AR time)
+          const paidDateAr = inst.paidAt ? new Date(inst.paidAt).toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }) : '';
+          if (paidDateAr === todayStr) {
             collectedTodayList.push({
               id: inst.id,
               saleId: sale.id,
@@ -253,7 +259,7 @@ export const Dashboard: React.FC = () => {
       </header>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <StatCard
           title="Cobros Hoy / Mora"
           value={`$${stats.alerts.reduce((acc, a) => acc + a.amount, 0).toLocaleString()}`}

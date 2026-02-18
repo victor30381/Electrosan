@@ -3,6 +3,7 @@ import { LayoutDashboard, Users, DollarSign, TrendingUp, X, Menu, AlertCircle, S
 import { Dashboard } from './components/Dashboard';
 import { Clients } from './components/Clients';
 import { Sales } from './components/Sales';
+import { Credits } from './components/Credits';
 import { Accounting } from './components/Accounting';
 import { LoginPage } from './components/LoginPage';
 import { StoreProvider } from './store/StoreContext';
@@ -55,7 +56,7 @@ const AppContent: React.FC = () => {
   }
 
   if (!user) {
-    return <LoginPage />;
+    return <LoginPage isLightMode={isLightMode} toggleTheme={toggleTheme} />;
   }
 
   const NavItem = ({ view, icon: Icon, label }: { view: ViewState; icon: any; label: string }) => (
@@ -85,7 +86,7 @@ const AppContent: React.FC = () => {
           }`}
       />
 
-      <span className={`relative z-10 font-black uppercase tracking-[0.2em] text-[10px] transition-all duration-500 ${currentView === view ? 'neon-text' : isLightMode ? 'group-hover:text-black group-hover:tracking-[0.3em]' : 'group-hover:tracking-[0.3em] group-hover:text-white'
+      <span className={`relative z-10 font-black uppercase tracking-[0.2em] text-xs transition-all duration-500 ${currentView === view ? 'neon-text' : isLightMode ? 'group-hover:text-black group-hover:tracking-[0.3em]' : 'group-hover:tracking-[0.3em] group-hover:text-white'
         }`}>
         {label}
       </span>
@@ -115,7 +116,7 @@ const AppContent: React.FC = () => {
               <div className={`absolute inset-y-0 left-0 w-[85%] max-w-sm ${isLightMode ? 'bg-white/95 border-gray-200' : 'bg-dark-950/95 border-white/5'} border-r shadow-2xl flex flex-col p-8 animate-in slide-in-from-left duration-500`}>
                 <div className="flex items-center justify-between mb-12">
                   <div className="flex items-center gap-3">
-                    <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Logo" className="w-10 h-10 object-contain drop-shadow-neon-sm" />
+                    <img src={`${(import.meta as any).env.BASE_URL}logo.png`} alt="Logo" className="w-10 h-10 object-contain drop-shadow-neon-sm" />
                     <span className={`font-black tracking-tighter text-xl ${isLightMode ? 'text-black' : 'text-white'}`}>ELECTRO<span className="text-neon-400">SAN</span></span>
                   </div>
                   <button
@@ -129,12 +130,13 @@ const AppContent: React.FC = () => {
                 <nav className="flex-1 -mx-8 overflow-y-auto">
                   <NavItem view="dashboard" icon={LayoutDashboard} label="Dashboard" />
                   <NavItem view="clients" icon={Users} label="Clientes" />
-                  <NavItem view="sales" icon={DollarSign} label="Ventas" />
+                  <NavItem view="sales" icon={ShoppingBag} label="Operaciones" />
+                  <NavItem view="credits" icon={DollarSign} label="Créditos" />
                   <NavItem view="accounting" icon={TrendingUp} label="Contabilidad" />
 
                   <button
                     onClick={toggleTheme}
-                    className={`w-full flex items-center gap-6 px-10 py-6 transition-all font-black uppercase tracking-[0.2em] text-[10px] ${isLightMode ? 'text-black hover:text-gray-700' : 'text-gray-500 hover:text-white'}`}
+                    className={`w-full flex items-center gap-6 px-10 py-6 transition-all font-black uppercase tracking-[0.2em] text-xs ${isLightMode ? 'text-black hover:text-gray-700' : 'text-gray-500 hover:text-white'}`}
                   >
                     {isLightMode ? <Moon size={20} /> : <Sun size={20} />}
                     {isLightMode ? 'Modo Oscuro' : 'Modo Claro'}
@@ -142,7 +144,7 @@ const AppContent: React.FC = () => {
 
                   <button
                     onClick={() => logout()}
-                    className="w-full flex items-center gap-6 px-10 py-6 text-red-500/60 hover:text-red-500 transition-all font-black uppercase tracking-[0.2em] text-[10px]"
+                    className="w-full flex items-center gap-6 px-10 py-6 text-red-500/60 hover:text-red-500 transition-all font-black uppercase tracking-[0.2em] text-xs"
                   >
                     <LogOut size={20} />
                     Cerrar Sesión
@@ -167,7 +169,7 @@ const AppContent: React.FC = () => {
             <div className="p-10 mb-6 relative flex flex-col items-center text-center">
               <div className="relative group mb-6">
                 <div className="absolute inset-0 bg-neon-400 opacity-20 blur-3xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ElectroSan Logo" className="w-36 h-36 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(57,255,20,0.4)] group-hover:drop-shadow-[0_0_30px_rgba(57,255,20,0.6)] transition-all duration-500 scale-110 group-hover:scale-125" />
+                <img src={`${(import.meta as any).env.BASE_URL}logo.png`} alt="ElectroSan Logo" className="w-36 h-36 object-contain relative z-10 drop-shadow-[0_0_20px_rgba(57,255,20,0.4)] group-hover:drop-shadow-[0_0_30px_rgba(57,255,20,0.6)] transition-all duration-500 scale-110 group-hover:scale-125" />
               </div>
 
               <div className="relative inline-block group">
@@ -183,6 +185,7 @@ const AppContent: React.FC = () => {
               <NavItem view="dashboard" icon={LayoutDashboard} label="Monitor Central" />
               <NavItem view="clients" icon={Users} label="Gestión Clientes" />
               <NavItem view="sales" icon={ShoppingBag} label="Operaciones" />
+              <NavItem view="credits" icon={DollarSign} label="Créditos" />
               <NavItem view="accounting" icon={PieChart} label="Estadísticas" />
             </nav>
 
@@ -222,7 +225,7 @@ const AppContent: React.FC = () => {
             {/* Mobile Header */}
             <div className={`md:hidden flex items-center justify-between px-6 py-4 ${isLightMode ? 'bg-white/80 border-gray-200' : 'bg-dark-950/80 border-white/5'} border-b sticky top-0 z-30 backdrop-blur-xl transition-colors duration-500`}>
               <div className="flex items-center gap-4">
-                <img src={`${import.meta.env.BASE_URL}logo.png`} alt="ElectroSan Logo" className="w-12 h-12 object-contain drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]" />
+                <img src={`${(import.meta as any).env.BASE_URL}logo.png`} alt="ElectroSan Logo" className="w-12 h-12 object-contain drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]" />
                 <span className={`font-black tracking-tighter text-xl ${isLightMode ? 'text-black' : 'text-white'}`}>ELECTRO<span className="text-neon-400">SAN</span></span>
               </div>
               <div className="flex items-center gap-2">
@@ -246,6 +249,7 @@ const AppContent: React.FC = () => {
               {currentView === 'dashboard' && <Dashboard />}
               {currentView === 'clients' && <Clients onNavigateToSales={() => setCurrentView('sales')} />}
               {currentView === 'sales' && <Sales />}
+              {currentView === 'credits' && <Credits onNavigateToSales={() => setCurrentView('sales')} />}
               {currentView === 'accounting' && <Accounting />}
             </div>
           </main>

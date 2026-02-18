@@ -40,6 +40,9 @@ interface StoreContextType {
     totalDebt: number;
     history: Sale[];
   };
+  history: Sale[];
+  editingSaleId: string | null;
+  setEditingSaleId: (id: string | null) => void;
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -66,6 +69,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [sales, setSales] = useState<Sale[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [preSelectedClientId, setPreSelectedClientId] = useState<string | null>(null);
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
 
   // Firestore Listeners
   useEffect(() => {
@@ -345,7 +349,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   return (
     <StoreContext.Provider value={{
       clients, sales, leads, addClient, updateClient, deleteClient, addSale, addLead, markInstallmentPaid, reportMissedPayment, toggleSaleStatus, deleteLead,
-      preSelectedClientId, setPreSelectedClientId, isDefaulter, getClientStats, updateSale, deleteSale
+      preSelectedClientId, setPreSelectedClientId, isDefaulter, getClientStats, updateSale, deleteSale,
+      editingSaleId, setEditingSaleId
     }}>
       {children}
     </StoreContext.Provider>

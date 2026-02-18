@@ -6,15 +6,18 @@
   --neon-glow-hover: rgba(57, 255, 20, 0.6);
   --bg-dark: #050505;
   --bg-card: #0A0A0A;
+  font-size: 115%;
+  /* Increased base font size */
 }
 
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-dark);
-  background-color: var(--bg-dark);
   color: #ffffff;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  font-weight: 600;
+  /* Bolder text by default */
 }
 
 select option {
@@ -143,7 +146,8 @@ body.light-mode {
 
 @media (max-width: 640px) {
   :root {
-    font-size: 14px;
+    font-size: 105%;
+    /* Still larger on mobile, but fitting screens better */
   }
 }
 

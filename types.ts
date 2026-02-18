@@ -51,4 +51,4 @@ export interface Lead {
   createdAt: string;
 }
 
-export type ViewState = 'dashboard' | 'clients' | 'sales' | 'accounting';
+export type ViewState = 'dashboard' | 'clients' | 'sales' | 'accounting' | 'credits';

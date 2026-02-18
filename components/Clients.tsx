@@ -31,7 +31,7 @@ export const Clients: React.FC<ClientsProps> = ({ onNavigateToSales }) => {
    const filteredClients = clients.filter(c =>
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.phone.includes(searchTerm)
-   );
+   ).sort((a, b) => a.name.localeCompare(b.name));
 
    const clientStats = viewingClient ? getClientStats(viewingClient.id) : null;
 
