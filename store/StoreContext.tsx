@@ -26,6 +26,7 @@ interface StoreContextType {
   addSale: (saleData: { clientId: string, product: Product, frequency: PaymentFrequency, method: PaymentMethod, installmentsCount: number, startDate: string, weeklyDay?: number, monthlyDay?: number }) => Promise<void>;
   addLead: (description: string, clientId?: string) => Promise<void>;
   markInstallmentPaid: (saleId: string, installmentId: string) => Promise<void>;
+  markInstallmentOverdue: (saleId: string, installmentId: string) => Promise<void>;
   reportMissedPayment: (saleId: string) => Promise<void>;
   updateSale: (updatedSale: Sale) => Promise<void>;
   deleteSale: (saleId: string) => Promise<void>;
@@ -34,6 +35,8 @@ interface StoreContextType {
   preSelectedClientId: string | null;
   setPreSelectedClientId: (id: string | null) => void;
   isDefaulter: (clientId: string) => boolean;
+  getOverdueInstallments: (saleId: string) => { installment: Installment; daysOverdue: number }[];
+  getClientOverdueCount: (clientId: string) => number;
   getClientStats: (clientId: string) => {
     totalPurchased: number;
     totalPaid: number;
@@ -317,6 +320,33 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
   };
 
+  // Marca manualmente una cuota como atrasada, retrocediendo su dueDate según la frecuencia
+  const markInstallmentOverdue = async (saleId: string, installmentId: string) => {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale || !user) return;
+
+    const updatedInstallments = sale.installments.map(inst => {
+      if (inst.id !== installmentId || inst.status !== 'pending') return inst;
+
+      const currentDate = new Date(inst.dueDate.split('T')[0] + 'T00:00:00');
+      let newDate = new Date(currentDate);
+
+      if (sale.frequency === 'Diaria') {
+        newDate = addDays(currentDate, -1);
+      } else if (sale.frequency === 'Semanal') {
+        newDate = addDays(currentDate, -7);
+      } else if (sale.frequency === 'Mensual') {
+        newDate = addMonths(currentDate, -1);
+      }
+
+      return { ...inst, dueDate: toLocalISOString(newDate) };
+    });
+
+    await updateDoc(doc(db, 'users', user.uid, 'sales', saleId), {
+      installments: updatedInstallments
+    });
+  };
+
   const deleteSale = async (saleId: string) => {
     if (!user) return;
     await deleteDoc(doc(db, 'users', user.uid, 'sales', saleId));
@@ -329,7 +359,57 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const isDefaulter = (clientId: string) => {
-    return sales.some(s => s.clientId === clientId && s.status === 'defaulted');
+    // A client is "moroso" if they have ANY pending installment that is past due date
+    const todayStr = getArgentinaToday();
+    const today = new Date(todayStr + 'T00:00:00');
+
+    return sales.some(s => {
+      if (s.clientId !== clientId) return false;
+      if (s.status === 'completed') return false;
+      if (s.status === 'defaulted') return true;
+      // Check for overdue pending installments
+      return s.installments.some(inst => {
+        if (inst.status !== 'pending') return false;
+        const dueDate = new Date(inst.dueDate.split('T')[0] + 'T00:00:00');
+        return dueDate < today;
+      });
+    });
+  };
+
+  const getOverdueInstallments = (saleId: string) => {
+    const sale = sales.find(s => s.id === saleId);
+    if (!sale) return [];
+    const todayStr = getArgentinaToday();
+    const today = new Date(todayStr + 'T00:00:00');
+
+    return sale.installments
+      .filter(inst => {
+        if (inst.status !== 'pending') return false;
+        const dueDate = new Date(inst.dueDate.split('T')[0] + 'T00:00:00');
+        return dueDate < today;
+      })
+      .map(inst => {
+        const dueDate = new Date(inst.dueDate.split('T')[0] + 'T00:00:00');
+        const diffTime = today.getTime() - dueDate.getTime();
+        const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        return { installment: inst, daysOverdue };
+      })
+      .sort((a, b) => b.daysOverdue - a.daysOverdue);
+  };
+
+  const getClientOverdueCount = (clientId: string) => {
+    const todayStr = getArgentinaToday();
+    const today = new Date(todayStr + 'T00:00:00');
+    let count = 0;
+    sales.forEach(s => {
+      if (s.clientId !== clientId || s.status === 'completed') return;
+      s.installments.forEach(inst => {
+        if (inst.status !== 'pending') return;
+        const dueDate = new Date(inst.dueDate.split('T')[0] + 'T00:00:00');
+        if (dueDate < today) count++;
+      });
+    });
+    return count;
   };
 
   const getClientStats = (clientId: string) => {
@@ -348,8 +428,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <StoreContext.Provider value={{
-      clients, sales, leads, addClient, updateClient, deleteClient, addSale, addLead, markInstallmentPaid, reportMissedPayment, toggleSaleStatus, deleteLead,
-      preSelectedClientId, setPreSelectedClientId, isDefaulter, getClientStats, updateSale, deleteSale,
+      clients, sales, leads, addClient, updateClient, deleteClient, addSale, addLead, markInstallmentPaid, markInstallmentOverdue, reportMissedPayment, toggleSaleStatus, deleteLead,
+      preSelectedClientId, setPreSelectedClientId, isDefaulter, getOverdueInstallments, getClientOverdueCount, getClientStats, updateSale, deleteSale,
       editingSaleId, setEditingSaleId
     }}>
       {children}

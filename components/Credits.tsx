@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/StoreContext';
-import { formatArgentinaDate, safeDateFormat } from '../utils/dateUtils';
-import { DollarSign, Check, Trash2, Pencil, X, Calendar, ChevronDown, CreditCard as CreditCardIcon } from 'lucide-react';
+import { formatArgentinaDate, safeDateFormat, getArgentinaToday } from '../utils/dateUtils';
+import { DollarSign, Check, Trash2, Pencil, X, Calendar, ChevronDown, CreditCard as CreditCardIcon, Clock } from 'lucide-react';
 import { Sale } from '../types';
 
 
@@ -140,7 +140,7 @@ const SaleCard: React.FC<{
   onDelete: () => void;
 }> = ({ sale, clientName, onEdit, onDelete }) => {
   const [expanded, setExpanded] = useState(false);
-  const { markInstallmentPaid } = useStore();
+  const { markInstallmentPaid, markInstallmentOverdue, getOverdueInstallments, getClientOverdueCount } = useStore();
 
   const progress = ((sale.totalAmount - sale.remainingAmount) / sale.totalAmount) * 100;
 
@@ -171,6 +171,14 @@ const SaleCard: React.FC<{
                 <span className="text-neon-400 font-black text-[10px]">{clientName.charAt(0)}</span>
               </div>
               <span className="text-white/80 font-black text-xs uppercase tracking-wider min-w-0">{clientName}</span>
+                {(() => {
+                  const overdueCount = getClientOverdueCount(sale.clientId);
+                  return overdueCount > 0 ? (
+                    <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-black uppercase tracking-wider animate-pulse">
+                      MOROSO
+                    </span>
+                  ) : null;
+                })()}
             </div>
           </div>
 
@@ -252,18 +260,32 @@ const SaleCard: React.FC<{
             {sale.installments.map((inst, index) => {
               const prevPaid = index === 0 || sale.installments[index - 1].status === 'paid';
               const isNextDue = inst.status === 'pending' && prevPaid;
+              
+              // Calculate overdue days for this installment
+              const todayStr = getArgentinaToday();
+              const today = new Date(todayStr + 'T00:00:00');
+              const dueDate = new Date(inst.dueDate.split('T')[0] + 'T00:00:00');
+              const isOverdue = inst.status === 'pending' && dueDate < today;
+              const daysOverdue = isOverdue ? Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
 
               return (
                 <div
                   key={inst.id}
                   className={`relative p-5 rounded-[22px] border transition-all duration-500 flex flex-col gap-4 group/inst ${inst.status === 'paid'
                     ? 'bg-white/[0.01] border-white/5 opacity-40 hover:opacity-100'
-                    : isNextDue
-                      ? 'bg-neon-400/[0.05] border-neon-400/30 shadow-[0_0_20px_rgba(57,255,20,0.05)] scale-[1.02] z-10'
-                      : 'bg-white/[0.03] border-white/10 hover:border-white/20'
+                    : isOverdue
+                      ? 'bg-red-500/[0.05] border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.08)]'
+                      : isNextDue
+                        ? 'bg-neon-400/[0.05] border-neon-400/30 shadow-[0_0_20px_rgba(57,255,20,0.05)] scale-[1.02] z-10'
+                        : 'bg-white/[0.03] border-white/10 hover:border-white/20'
                     }`}
                 >
-                  {isNextDue && (
+                  {isOverdue && (
+                    <div className="absolute -top-3 left-6 px-3 py-1 bg-red-500 text-white text-[8px] font-black uppercase tracking-widest rounded-full shadow-lg animate-pulse">
+                      {daysOverdue} día{daysOverdue > 1 ? 's' : ''} de atraso
+                    </div>
+                  )}
+                  {isNextDue && !isOverdue && (
                     <div className="absolute -top-3 left-6 px-3 py-1 bg-neon-400 text-black text-[8px] font-black uppercase tracking-widest rounded-full shadow-neon-sm">
                       Siguiente a Cobrar
                     </div>
@@ -273,9 +295,11 @@ const SaleCard: React.FC<{
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs border transition-all duration-300 ${inst.status === 'paid'
                         ? 'bg-neon-400/10 border-neon-400/20 text-neon-400'
-                        : isNextDue
-                          ? 'bg-neon-400 text-black border-neon-400 shadow-neon-sm'
-                          : 'bg-white/5 border-white/10 text-white/30'
+                        : isOverdue
+                          ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                          : isNextDue
+                            ? 'bg-neon-400 text-black border-neon-400 shadow-neon-sm'
+                            : 'bg-white/5 border-white/10 text-white/30'
                         }`}>
                         {inst.status === 'paid' ? <Check size={16} strokeWidth={3} /> : inst.number}
                       </div>
@@ -289,15 +313,24 @@ const SaleCard: React.FC<{
                     </div>
 
                     {inst.status === 'pending' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); markInstallmentPaid(sale.id, inst.id); }}
-                        className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${isNextDue
-                          ? 'bg-neon-400 text-black shadow-neon-md hover:scale-110'
-                          : 'bg-white/5 text-white/30 hover:bg-neon-400 hover:text-black border border-white/10 hover:border-neon-400'
-                          }`}
-                      >
-                        <DollarSign size={18} />
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); markInstallmentOverdue(sale.id, inst.id); }}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-400/50 hover:bg-red-500/20 hover:text-red-400 border border-red-500/10 hover:border-red-500/30 transition-all duration-300"
+                          title="Marcar atraso (retrocede la fecha de vencimiento)"
+                        >
+                          <Clock size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); markInstallmentPaid(sale.id, inst.id); }}
+                          className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all duration-300 ${isNextDue
+                            ? 'bg-neon-400 text-black shadow-neon-md hover:scale-110'
+                            : 'bg-white/5 text-white/30 hover:bg-neon-400 hover:text-black border border-white/10 hover:border-neon-400'
+                            }`}
+                        >
+                          <DollarSign size={18} />
+                        </button>
+                      </div>
                     )}
 
                     {inst.status === 'paid' && (

@@ -245,7 +245,7 @@ const AppContent: React.FC = () => {
               </div>
             </div>
 
-            <div className="p-4 md:p-10 max-w-7xl mx-auto pb-20">
+            <div className="p-4 md:py-10 md:px-6 max-w-7xl mx-auto pb-20">
               {currentView === 'dashboard' && <Dashboard />}
               {currentView === 'clients' && <Clients onNavigateToSales={() => setCurrentView('sales')} />}
               {currentView === 'sales' && <Sales />}

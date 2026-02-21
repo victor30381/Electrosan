@@ -16,7 +16,7 @@ interface ClientsProps {
 }
 
 export const Clients: React.FC<ClientsProps> = ({ onNavigateToSales }) => {
-   const { clients, sales, deleteClient, isDefaulter, getClientStats, setPreSelectedClientId, markInstallmentPaid } = useStore();
+   const { clients, sales, deleteClient, isDefaulter, getClientStats, getClientOverdueCount, setPreSelectedClientId, markInstallmentPaid } = useStore();
    const [searchTerm, setSearchTerm] = useState('');
    const [showForm, setShowForm] = useState(false);
    const [editingClientId, setEditingClientId] = useState<string | null>(null);
@@ -137,7 +137,7 @@ export const Clients: React.FC<ClientsProps> = ({ onNavigateToSales }) => {
                <table className="w-full text-left">
                   <thead>
                      <tr className="text-white/40 text-[9px] uppercase font-black tracking-widest border-b border-white/5">
-                        <th className="p-6">Perfil Cliente</th>
+                        <th className="py-6 pl-4 pr-6">Perfil Cliente</th>
                         <th className="p-6">Información Contacto</th>
                         <th className="p-6">Ubicación</th>
                         <th className="p-6 text-right">Acciones de Gestión</th>
@@ -156,27 +156,25 @@ export const Clients: React.FC<ClientsProps> = ({ onNavigateToSales }) => {
                                  }`}
                               style={{ animationDelay: `${index * 0.05}s`, animationFillMode: 'both' }}
                            >
-                              <td className="p-6">
-                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-xl ${defaulted
+                              <td className="py-6 pl-4 pr-6">
+                                  <div className="flex items-center gap-4 min-w-0">
+                                    <div className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-all duration-500 shadow-xl ${defaulted
                                        ? 'bg-red-900/30 text-red-500 border border-red-500/30'
                                        : 'bg-white/5 text-neon-400 border border-white/10 group-hover:bg-neon-400 group-hover:text-black group-hover:shadow-neon-sm'
                                        }`}>
                                        {defaulted ? <AlertTriangle size={24} /> : <User size={24} />}
                                     </div>
-                                    <div>
-                                       <p className={`text-lg font-black tracking-tight transition-colors flex items-center gap-2 ${defaulted ? 'text-red-400' : 'text-white group-hover:text-neon-400 group-hover:neon-text'}`}>
-                                          {client.name}
-                                          {defaulted && <span className="text-[9px] bg-red-600 text-white px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">Baja Definitiva</span>}
+                                     <div className="min-w-0 flex-1">
+                                       <p className={`text-lg font-black tracking-tight transition-colors truncate ${defaulted ? 'text-red-400' : 'text-white group-hover:text-neon-400 group-hover:neon-text'}`}>
+                                           {client.name}
                                        </p>
-                                       <div className="flex items-center gap-2">
+                                       <div className="flex items-center gap-2 flex-wrap">
                                           <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest">ID #{client.id.substr(0, 6)}</p>
                                           {(() => {
-                                             const clientSales = sales.filter(s => s.clientId === client.id && s.status === 'active');
-                                             const totalMissed = clientSales.reduce((acc, s) => acc + (s.missedPaymentsCount || 0), 0);
-                                             return totalMissed > 0 ? (
-                                                <span className="text-[8px] bg-amber-400/20 text-amber-500 border border-amber-400/30 px-2 py-0.5 rounded-full font-black uppercase tracking-tighter">
-                                                   Moroso {totalMissed} cuota{totalMissed > 1 ? 's' : ''}
+                                             const overdueCount = getClientOverdueCount(client.id);
+                                             return overdueCount > 0 ? (
+                                                <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-full font-black uppercase tracking-tighter animate-pulse whitespace-nowrap">
+                                                    MOROSO • {overdueCount} cuota{overdueCount > 1 ? 's' : ''}
                                                 </span>
                                              ) : null;
                                           })()}
@@ -260,18 +258,17 @@ export const Clients: React.FC<ClientsProps> = ({ onNavigateToSales }) => {
                                  <div className="flex items-center gap-2 mt-0.5">
                                     <p className="text-[10px] text-white/30 font-black uppercase tracking-widest">Saldo Deuda #{client.id.substr(0, 6)}</p>
                                     {(() => {
-                                       const clientSales = sales.filter(s => s.clientId === client.id && s.status === 'active');
-                                       const totalMissed = clientSales.reduce((acc, s) => acc + (s.missedPaymentsCount || 0), 0);
-                                       return totalMissed > 0 ? (
-                                          <span className="text-[8px] bg-amber-400/20 text-amber-500 border border-amber-400/20 px-2 py-0.5 rounded-full font-black uppercase">
-                                             Moroso {totalMissed} cuota{totalMissed > 1 ? 's' : ''}
-                                          </span>
-                                       ) : null;
+                                       const overdueCount = getClientOverdueCount(client.id);
+                                        return overdueCount > 0 ? (
+                                           <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-black uppercase animate-pulse">
+                                              MOROSO • {overdueCount} cuota{overdueCount > 1 ? 's' : ''}
+                                           </span>
+                                        ) : null;
                                     })()}
                                  </div>
                               </div>
                            </div>
-                           {defaulted && <span className="text-[8px] bg-red-600 text-white px-2 py-0.5 rounded-full font-black uppercase">Baja Definitiva</span>}
+                           {defaulted && <span className="text-[8px] bg-red-600 text-white px-2 py-0.5 rounded-full font-black uppercase animate-pulse">Moroso</span>}
                         </div>
 
                         <div className="space-y-3">
@@ -429,13 +426,12 @@ export const Clients: React.FC<ClientsProps> = ({ onNavigateToSales }) => {
                               <div className="flex items-center gap-2 mt-0.5">
                                  <p className="text-[8px] md:text-[9px] text-white/40 font-black uppercase tracking-[0.2em]">Cliente Verificado</p>
                                  {(() => {
-                                    const clientSales = sales.filter(s => s.clientId === viewingClient.id && s.status === 'active');
-                                    const totalMissed = clientSales.reduce((acc, s) => acc + (s.missedPaymentsCount || 0), 0);
-                                    return totalMissed > 0 ? (
-                                       <span className="text-[8px] bg-amber-400/20 text-amber-500 border border-amber-400/20 px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
-                                          Moroso {totalMissed} cuota{totalMissed > 1 ? 's' : ''}
-                                       </span>
-                                    ) : null;
+                                    const overdueCount = getClientOverdueCount(viewingClient.id);
+                                     return overdueCount > 0 ? (
+                                        <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-black uppercase tracking-widest animate-pulse">
+                                           MOROSO • {overdueCount} cuota{overdueCount > 1 ? 's' : ''}
+                                        </span>
+                                     ) : null;
                                  })()}
                               </div>
                            </div>

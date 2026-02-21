@@ -4,7 +4,7 @@ import { getArgentinaToday, formatArgentinaTime, safeDateFormat, getArgentinaDat
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend
 } from 'recharts';
-import { AlertCircle, CheckCircle, TrendingUp, DollarSign, Calendar, Users, X, CheckSquare, List, Phone, MapPin, User, ChevronRight, Wallet, Clock, CreditCard, Ban, PlayCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, TrendingUp, DollarSign, Calendar, Users, X, CheckSquare, List, Phone, MapPin, User, ChevronRight, Wallet, Clock, CreditCard, Ban, PlayCircle, RefreshCw, Bell } from 'lucide-react';
 import { Client, Sale } from '../types';
 
 
@@ -57,10 +57,11 @@ const StatCard: React.FC<{
 };
 
 export const Dashboard: React.FC = () => {
-  const { sales, clients, markInstallmentPaid, reportMissedPayment, toggleSaleStatus } = useStore();
+  const { sales, clients, markInstallmentPaid, reportMissedPayment, toggleSaleStatus, getClientOverdueCount } = useStore();
   const [activeModal, setActiveModal] = useState<'pending' | 'collected' | 'active_credits' | null>(null);
   const [viewingClient, setViewingClient] = useState<string | null>(null); // Stores Client ID
   const [selectedDashboardDate, setSelectedDashboardDate] = useState(getArgentinaToday());
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const stats = useMemo(() => {
     let totalReceivable = 0;
@@ -144,12 +145,19 @@ export const Dashboard: React.FC = () => {
           const instDueDateStr = inst.dueDate.split('T')[0];
           const matchesDate = instDueDateStr === selectedDashboardDate;
 
-          // LOGIC: Group by Client for "Today's Alerts" and "Pending List"
-          if (matchesDate && sale.status !== 'defaulted') {
+          // NEW LOGIC: Include overdue installments (past due) in alerts
+          // Show in the table: installments matching selected date OR overdue (when viewing today)
+          const isViewingToday = selectedDashboardDate === getArgentinaToday();
+          const shouldShowInAlerts = (matchesDate || (isViewingToday && isOverdue)) && sale.status !== 'defaulted';
+
+          if (shouldShowInAlerts) {
             const existingAlert = alerts.find(a => a.clientId === sale.clientId);
             if (existingAlert) {
               existingAlert.amount += inst.amount;
-              // We could also merge product names or count items, but amount is key
+              // Keep the highest overdue days for the client
+              if (diffDays > existingAlert.daysOverdue) {
+                existingAlert.daysOverdue = diffDays;
+              }
             } else {
               alerts.push({
                 clientId: sale.clientId,
@@ -161,7 +169,7 @@ export const Dashboard: React.FC = () => {
               });
             }
 
-            // For the MODAL list (Pending List), we also want to group by client
+            // For the MODAL list (Pending List), add overdue + today's installments
             if (dueDate <= today) {
               const existingPending = pendingList.find(p => p.clientId === sale.clientId);
 
@@ -172,16 +180,22 @@ export const Dashboard: React.FC = () => {
                   id: inst.id,
                   saleId: sale.id,
                   amount: inst.amount,
-                  number: inst.number
+                  number: inst.number,
+                  daysOverdue: Math.max(0, diffDays),
+                  dueDate: inst.dueDate
                 });
+                // Update the max overdue for the grouped item
+                if (diffDays > existingPending.daysOverdue) {
+                  existingPending.daysOverdue = diffDays;
+                  existingPending.isOverdue = true;
+                }
               } else {
                 pendingList.push({
-                  // We simulate a single item ID, but we need to handle multi-payment
                   id: inst.id,
-                  saleId: sale.id, // Primary sale ID, but could be mixed
+                  saleId: sale.id,
                   clientId: sale.clientId,
                   clientName,
-                  productName: sale.product.name, // Initial product name
+                  productName: sale.product.name,
                   products: [sale.product.name],
                   number: inst.number,
                   amount: inst.amount,
@@ -189,11 +203,13 @@ export const Dashboard: React.FC = () => {
                   daysOverdue: Math.max(0, diffDays),
                   isOverdue,
                   missedPaymentsCount: sale.missedPaymentsCount || 0,
-                  installments: [{ // New structure to hold all child installments
+                  installments: [{
                     id: inst.id,
                     saleId: sale.id,
                     amount: inst.amount,
-                    number: inst.number
+                    number: inst.number,
+                    daysOverdue: Math.max(0, diffDays),
+                    dueDate: inst.dueDate
                   }]
                 });
               }
@@ -209,6 +225,32 @@ export const Dashboard: React.FC = () => {
     // Sort alerts by client name
     alerts.sort((a, b) => a.clientName.localeCompare(b.clientName));
 
+    // Calculate overdue details for notifications
+    const overdueDetails: { clientId: string, clientName: string, productName: string, saleId: string, installmentNumber: number, amount: number, daysOverdue: number, dueDate: string }[] = [];
+    sales.forEach(sale => {
+      if (sale.status === 'completed') return;
+      const clientName = clients.find(c => c.id === sale.clientId)?.name || 'Desconocido';
+      sale.installments.forEach(inst => {
+        if (inst.status !== 'pending') return;
+        const dueDate = safeDateFormat(inst.dueDate);
+        if (dueDate < today) {
+          const diffTime = today.getTime() - dueDate.getTime();
+          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+          overdueDetails.push({
+            clientId: sale.clientId,
+            clientName,
+            productName: sale.product.name,
+            saleId: sale.id,
+            installmentNumber: inst.number,
+            amount: inst.amount,
+            daysOverdue: diffDays,
+            dueDate: inst.dueDate
+          });
+        }
+      });
+    });
+    overdueDetails.sort((a, b) => b.daysOverdue - a.daysOverdue);
+
     return {
       totalReceivable,
       totalCollected,
@@ -218,7 +260,8 @@ export const Dashboard: React.FC = () => {
       pendingList,
       collectedTodayList,
       activeCreditsList,
-      selectedDateTotal: alerts.reduce((acc, a) => acc + a.amount, 0)
+      selectedDateTotal: alerts.reduce((acc, a) => acc + a.amount, 0),
+      overdueDetails
     };
   }, [sales, clients, selectedDashboardDate]);
 
@@ -244,9 +287,91 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(57,255,20,0.1)]">
-            DASHBOARD <span className="text-neon-400 uppercase">Resumen</span>
-          </h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-4xl font-black text-white tracking-tighter drop-shadow-[0_0_15px_rgba(57,255,20,0.1)]">
+              DASHBOARD <span className="text-neon-400 uppercase">Resumen</span>
+            </h1>
+            {/* Notification Bell */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-red-500/30 hover:bg-red-500/10 transition-all duration-300 group/bell"
+                title="Notificaciones de mora"
+              >
+                <Bell size={20} className="text-white/40 group-hover/bell:text-red-400 transition-colors" />
+                {stats.overdueDetails.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-black rounded-full px-1 shadow-lg shadow-red-500/30 animate-pulse">
+                    {stats.overdueDetails.length}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)} />
+                  <div className="fixed md:absolute top-24 md:top-full left-4 right-4 md:left-0 md:right-auto md:mt-2 md:w-[380px] max-h-[70vh] md:max-h-[500px] bg-dark-900/98 backdrop-blur-xl border border-red-500/20 rounded-2xl shadow-2xl shadow-red-500/10 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                          <Bell size={16} className="text-red-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-white uppercase tracking-wider">Cuotas Atrasadas</h3>
+                          <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">{stats.overdueDetails.length} cuota{stats.overdueDetails.length !== 1 ? 's' : ''} pendiente{stats.overdueDetails.length !== 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setShowNotifications(false)} className="p-1.5 rounded-lg hover:bg-white/5 text-white/30 hover:text-white transition-all">
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="overflow-y-auto max-h-[400px] custom-scrollbar">
+                      {stats.overdueDetails.length === 0 ? (
+                        <div className="p-8 text-center">
+                          <CheckCircle size={32} className="text-neon-400/30 mx-auto mb-3" />
+                          <p className="text-white/30 text-xs font-bold uppercase tracking-widest">Sin cuotas atrasadas</p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-white/5">
+                          {stats.overdueDetails.map((item, idx) => (
+                            <div key={idx} className="p-4 hover:bg-white/[0.02] transition-colors group/notif">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-sm font-black text-white truncate">{item.clientName}</span>
+                                    <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-1.5 py-0.5 rounded-full font-black uppercase whitespace-nowrap animate-pulse">
+                                      {item.daysOverdue} día{item.daysOverdue > 1 ? 's' : ''}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider truncate">
+                                    {item.productName} — Cuota {item.installmentNumber}
+                                  </p>
+                                  <p className="text-[9px] text-white/25 font-bold uppercase tracking-widest mt-0.5">
+                                    Vencía: {safeDateFormat(item.dueDate).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' })}
+                                  </p>
+                                </div>
+                                <span className="text-sm font-black text-red-400 whitespace-nowrap">
+                                  ${item.amount.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {stats.overdueDetails.length > 0 && (
+                      <div className="p-4 border-t border-white/5 flex items-center justify-between">
+                        <span className="text-[10px] text-white/30 font-black uppercase tracking-widest">Total en mora</span>
+                        <span className="text-lg font-black text-red-400">
+                          ${stats.overdueDetails.reduce((acc, d) => acc + d.amount, 0).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
           <p className="text-white/60 mt-2 font-medium flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-neon-400 animate-pulse" />
             Control financiero y gestión de cartera en tiempo real.
@@ -333,31 +458,43 @@ export const Dashboard: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    stats.alerts.map((alert: any, idx) => (
-                      <tr key={idx} className="group hover:bg-white/[0.02] transition-colors">
-                        <td className="py-4 text-white font-medium">{alert.clientName}</td>
-                        <td className="py-4 text-center">
-                          {alert.frequency === 'Diaria' && (
-                            <span className="bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-lg text-[9px] font-black border border-cyan-500/20 uppercase tracking-widest">Diario</span>
-                          )}
-                          {alert.frequency === 'Semanal' && (
-                            <span className="bg-orange-500/10 text-orange-400 px-3 py-1 rounded-lg text-[9px] font-black border border-orange-500/20 uppercase tracking-widest">Semanal</span>
-                          )}
-                          {alert.frequency === 'Mensual' && (
-                            <span className="bg-violet-500/10 text-violet-400 px-3 py-1 rounded-lg text-[9px] font-black border border-violet-500/20 uppercase tracking-widest">Mensual</span>
-                          )}
-                        </td>
-                        <td className="py-4 text-neon-400 font-bold">${alert.amount.toLocaleString()}</td>
-                        <td className="py-4">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold border ${alert.daysOverdue === 0 ? 'bg-neon-400/10 text-neon-400 border-neon-400/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
-                            {alert.daysOverdue === 0 ? 'Hoy' : alert.daysOverdue > 0 ? `+${alert.daysOverdue} días` : 'Pendiente'}
-                          </span>
-                        </td>
-                        <td className="py-4 text-white/50 text-right text-sm">
-                          {safeDateFormat(alert.date).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))
+                    stats.alerts.map((alert: any, idx) => {
+                      const overdueCount = getClientOverdueCount(alert.clientId);
+                      return (
+                        <tr key={idx} className="group hover:bg-white/[0.02] transition-colors">
+                          <td className="py-4 text-white font-medium">
+                            <div className="flex items-center gap-2">
+                              {alert.clientName}
+                              {overdueCount > 0 && (
+                                <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-black uppercase tracking-wider animate-pulse">
+                                  MOROSO
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-4 text-center">
+                            {alert.frequency === 'Diaria' && (
+                              <span className="bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-lg text-[9px] font-black border border-cyan-500/20 uppercase tracking-widest">Diario</span>
+                            )}
+                            {alert.frequency === 'Semanal' && (
+                              <span className="bg-orange-500/10 text-orange-400 px-3 py-1 rounded-lg text-[9px] font-black border border-orange-500/20 uppercase tracking-widest">Semanal</span>
+                            )}
+                            {alert.frequency === 'Mensual' && (
+                              <span className="bg-violet-500/10 text-violet-400 px-3 py-1 rounded-lg text-[9px] font-black border border-violet-500/20 uppercase tracking-widest">Mensual</span>
+                            )}
+                          </td>
+                          <td className="py-4 text-neon-400 font-bold">${alert.amount.toLocaleString()}</td>
+                          <td className="py-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border ${alert.daysOverdue === 0 ? 'bg-neon-400/10 text-neon-400 border-neon-400/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
+                              {alert.daysOverdue === 0 ? 'Hoy' : alert.daysOverdue > 0 ? `${alert.daysOverdue} día${alert.daysOverdue > 1 ? 's' : ''} de atraso` : 'Pendiente'}
+                            </span>
+                          </td>
+                          <td className="py-4 text-white/50 text-right text-sm">
+                            {safeDateFormat(alert.date).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -604,11 +741,11 @@ export const Dashboard: React.FC = () => {
                               </p>
                               <div className="flex flex-wrap items-center gap-3 mt-1">
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${item.isOverdue ? 'bg-red-500/20 text-red-500 border border-red-500/20' : 'bg-neon-400/20 text-neon-400 border border-neon-400/20'}`}>
-                                  {item.isOverdue ? `Atraso: ${item.daysOverdue} días` : 'Vence Hoy'}
+                                  {item.isOverdue ? `${item.daysOverdue} día${item.daysOverdue > 1 ? 's' : ''} de atraso` : 'Vence Hoy'}
                                 </span>
-                                {item.missedPaymentsCount > 0 && (
-                                  <span className="bg-amber-400/20 text-amber-400 border border-amber-400/20 px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest">
-                                    Moroso {item.missedPaymentsCount} cuota{item.missedPaymentsCount > 1 ? 's' : ''}
+                                {getClientOverdueCount(item.clientId) > 0 && (
+                                  <span className="bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest animate-pulse">
+                                    MOROSO
                                   </span>
                                 )}
                               </div>
@@ -625,7 +762,14 @@ export const Dashboard: React.FC = () => {
                                   <div key={subInst.id} className="flex items-center justify-between bg-white/[0.02] p-2 rounded-lg border border-white/5">
                                     <div className="flex flex-col">
                                       <span className="text-[10px] text-white font-bold uppercase tracking-tight">{prodName}</span>
-                                      <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Cuota {subInst.number}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Cuota {subInst.number}</span>
+                                        {subInst.daysOverdue > 0 && (
+                                          <span className="text-[8px] bg-red-500/20 text-red-400 border border-red-500/20 px-1.5 py-0.5 rounded font-black uppercase">
+                                            {subInst.daysOverdue} día{subInst.daysOverdue > 1 ? 's' : ''} atraso
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
                                     <div className="flex items-center gap-3">
                                       <span className="text-xs font-black text-neon-400">${subInst.amount.toLocaleString()}</span>
