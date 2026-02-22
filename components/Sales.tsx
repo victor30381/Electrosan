@@ -720,11 +720,11 @@ export const Sales: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-xs text-white/50 uppercase font-black tracking-widest ml-1 mb-1">Vincular Cliente</label>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
                   <select
                     value={saleForm.clientId}
                     onChange={e => setSaleForm({ ...saleForm, clientId: e.target.value })}
-                    className="flex-1 bg-white/5 border border-white/10 text-white rounded-xl p-4 focus:border-neon-400/50 focus:bg-white/[0.08] focus:outline-none transition-all appearance-none cursor-pointer font-bold text-base"
+                    className="w-full bg-white/5 border border-white/10 text-white rounded-xl p-4 focus:border-neon-400/50 focus:bg-white/[0.08] focus:outline-none transition-all appearance-none cursor-pointer font-bold text-base"
                     required
                   >
                     <option value="">Seleccionar Cliente...</option>
@@ -733,10 +733,11 @@ export const Sales: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowNewClientModal(true)}
-                    className="p-4 bg-neon-400/10 border border-neon-400/30 rounded-xl text-neon-400 hover:bg-neon-400 hover:text-black transition-all shadow-neon-sm"
+                    className="w-full py-3 flex items-center justify-center gap-2 bg-neon-400 text-black rounded-xl text-xs font-black uppercase tracking-widest shadow-neon-sm hover:shadow-neon-md hover:scale-[1.02] transition-all group/btn"
                     title="Nuevo Cliente"
                   >
-                    <Plus size={20} />
+                    <Plus size={16} className="group-hover/btn:scale-110 transition-transform" />
+                    Nuevo Cliente Rápido
                   </button>
                 </div>
               </div>

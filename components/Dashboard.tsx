@@ -145,10 +145,19 @@ export const Dashboard: React.FC = () => {
           const instDueDateStr = inst.dueDate.split('T')[0];
           const matchesDate = instDueDateStr === selectedDashboardDate;
 
-          // NEW LOGIC: Include overdue installments (past due) in alerts
-          // Show in the table: installments matching selected date OR overdue (when viewing today)
-          const isViewingToday = selectedDashboardDate === getArgentinaToday();
-          const shouldShowInAlerts = (matchesDate || (isViewingToday && isOverdue)) && sale.status !== 'defaulted';
+          const isSameCycleDay = (dueStr: string, targetStr: string, freq: string): boolean => {
+            const dDue = new Date(dueStr.split('T')[0] + 'T12:00:00');
+            const dTarget = new Date(targetStr + 'T12:00:00');
+            if (freq === 'Diaria') return true;
+            if (freq === 'Semanal') return dDue.getDay() === dTarget.getDay();
+            if (freq === 'Mensual') return dDue.getDate() === dTarget.getDate();
+            return true;
+          };
+
+          const isOverdueCyclicMatch = isOverdue && isSameCycleDay(inst.dueDate, selectedDashboardDate, sale.frequency);
+
+          // Include overdue installments only on their cycle-matching days
+          const shouldShowInAlerts = (matchesDate || isOverdueCyclicMatch) && sale.status !== 'defaulted';
 
           if (shouldShowInAlerts) {
             const existingAlert = alerts.find(a => a.clientId === sale.clientId);
@@ -169,50 +178,48 @@ export const Dashboard: React.FC = () => {
               });
             }
 
-            // For the MODAL list (Pending List), add overdue + today's installments
-            if (dueDate <= today) {
-              const existingPending = pendingList.find(p => p.clientId === sale.clientId);
+            // For the MODAL list (Pending List), add matching installments
+            const existingPending = pendingList.find(p => p.clientId === sale.clientId);
 
-              if (existingPending) {
-                existingPending.amount += inst.amount;
-                existingPending.products.push(sale.product.name);
-                existingPending.installments.push({
+            if (existingPending) {
+              existingPending.amount += inst.amount;
+              existingPending.products.push(sale.product.name);
+              existingPending.installments.push({
+                id: inst.id,
+                saleId: sale.id,
+                amount: inst.amount,
+                number: inst.number,
+                daysOverdue: Math.max(0, diffDays),
+                dueDate: inst.dueDate
+              });
+              // Update the max overdue for the grouped item
+              if (diffDays > existingPending.daysOverdue) {
+                existingPending.daysOverdue = diffDays;
+                existingPending.isOverdue = true;
+              }
+            } else {
+              pendingList.push({
+                id: inst.id,
+                saleId: sale.id,
+                clientId: sale.clientId,
+                clientName,
+                productName: sale.product.name,
+                products: [sale.product.name],
+                number: inst.number,
+                amount: inst.amount,
+                dueDate: inst.dueDate,
+                daysOverdue: Math.max(0, diffDays),
+                isOverdue,
+                missedPaymentsCount: sale.missedPaymentsCount || 0,
+                installments: [{
                   id: inst.id,
                   saleId: sale.id,
                   amount: inst.amount,
                   number: inst.number,
                   daysOverdue: Math.max(0, diffDays),
                   dueDate: inst.dueDate
-                });
-                // Update the max overdue for the grouped item
-                if (diffDays > existingPending.daysOverdue) {
-                  existingPending.daysOverdue = diffDays;
-                  existingPending.isOverdue = true;
-                }
-              } else {
-                pendingList.push({
-                  id: inst.id,
-                  saleId: sale.id,
-                  clientId: sale.clientId,
-                  clientName,
-                  productName: sale.product.name,
-                  products: [sale.product.name],
-                  number: inst.number,
-                  amount: inst.amount,
-                  dueDate: inst.dueDate,
-                  daysOverdue: Math.max(0, diffDays),
-                  isOverdue,
-                  missedPaymentsCount: sale.missedPaymentsCount || 0,
-                  installments: [{
-                    id: inst.id,
-                    saleId: sale.id,
-                    amount: inst.amount,
-                    number: inst.number,
-                    daysOverdue: Math.max(0, diffDays),
-                    dueDate: inst.dueDate
-                  }]
-                });
-              }
+                }]
+              });
             }
           }
         }
